@@ -1,6 +1,3 @@
-package inputs
-
-import readInput
 import kotlin.math.floor
 
 fun main() {
