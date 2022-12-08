@@ -11,7 +11,7 @@ fun main() {
             if (program[idx] == 1) {
                 program[program[idx+3]] = program[program[idx+1]] + program[program[idx+2]]
             } else if (program[idx] == 2) {
-                program[idx+3] = program[program[idx+1]] * program[program[idx+2]]
+                program[program[idx+3]] = program[program[idx+1]] * program[program[idx+2]]
             }
 
             idx += 4
