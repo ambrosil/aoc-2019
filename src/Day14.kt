@@ -2,66 +2,81 @@ import kotlin.math.ceil
 
 fun main() {
 
-    data class Element(var amount: Int, val name: String)
-
-    val buffer = mutableMapOf<String, Int>()
-    lateinit var map: Map<Element, List<Element>>
+    data class Element(var amount: Long, val name: String)
 
     fun parseElement(it: String): Element {
         val (amount, name) = it.trim().split(" ")
-        return Element(amount.toInt(), name)
+        return Element(amount.toLong(), name)
     }
 
-    fun elementsNeededFor(e: Element): List<Element> {
-        val key = map.keys.find { key -> key.name == e.name }
-        return map[key]!!
-    }
+    fun calcOre(
+        reserves: MutableMap<String, Long>,
+        dictionary: Map<Element, List<Element>>,
+        wantedElements: List<Element>
+    ): Long {
+        val newWantedElements = wantedElements
+            .flatMap { wantedElement ->
+                if (wantedElement.name == "ORE") {
+                    listOf(wantedElement)
+                } else {
+                    val actualQuantity = reserves.getOrDefault(wantedElement.name, 0L)
+                    val dictionaryElement = dictionary.entries.single { it.key.name == wantedElement.name }
+                    val amount = ceil((wantedElement.amount - actualQuantity).toDouble() / dictionaryElement.key.amount).toLong()
 
-    fun calcORE(e: Element): Int {
-        return if (e.name == "ORE") {
-            e.amount
-        } else {
-            val key = map.keys.find { key -> key.name == e.name }!!
-            val elementNeeded = map[key]!!
-            val currAmount = buffer.getOrDefault(e.name, 0)
-
-            if (currAmount >= e.amount) {
-                buffer[e.name] = currAmount - e.amount
-                0
-            } else if (currAmount > 0 && key.amount < e.amount) {
-                buffer[e.name] = key.amount - e.amount
-                ceil(currAmount.toDouble() + key.amount / e.amount).toInt() - currAmount
-            } else {
-                val amountToCreate = ceil(e.amount.toDouble() / (key.amount)).toInt()
-                buffer[e.name] = (amountToCreate * (key.amount)) - e.amount
-
-                amountToCreate * elementNeeded.sumOf {
-                    val calcORE = calcORE(it)
-                    println("$it $calcORE")
-                    calcORE
+                    reserves[wantedElement.name] = actualQuantity + dictionaryElement.key.amount * amount - wantedElement.amount
+                    dictionaryElement.value.map { Element(it.amount * amount, it.name) }
                 }
             }
+            .groupBy { it.name }
+            .map { entry -> Element(entry.value.sumOf { it.amount }, entry.key) }
+
+        return if (newWantedElements.size == 1) {
+            newWantedElements[0].amount
+        } else {
+            calcOre(reserves, dictionary, newWantedElements)
         }
     }
 
-    fun part1(input: List<String>): Int {
-        map = input.map {
+    fun getDictionary(input: List<String>): Map<Element, List<Element>> {
+        return input.map {
             it.split("=>")
                 .map {
-                    it.split(",").map { parseElement(it) }
+                    it.split(",")
+                        .map { parseElement(it) }
                 }
         }.associate { (first, second) ->
             second.single() to first
         }
-
-        return calcORE(Element(1, "FUEL"))
     }
 
-    fun part2(input: List<String>): Int {
-        return 0
+    fun calcOre(dictionary: Map<Element, List<Element>>, amount: Long): Long {
+        val reserves = mutableMapOf<String, Long>()
+        return calcOre(reserves, dictionary, listOf(Element(amount, "FUEL")))
     }
 
-    val input = readInput("test")
+    fun part1(input: List<String>) = calcOre(getDictionary(input), 1)
+
+    fun part2(input: List<String>): Long {
+        val dictionary = getDictionary(input)
+
+        val ore = calcOre(dictionary, 1)
+        val estimate = (1000000000000 / ore)
+        var count = 0
+
+        do {
+            val neededOre = calcOre(dictionary, ++count * estimate)
+        } while (neededOre <= 1000000000000)
+
+        var start = --count * estimate
+
+        do {
+            val neededOre = calcOre(dictionary, ++start)
+        } while (neededOre <= 1000000000000)
+
+        return start - 1
+    }
+
+    val input = readInput("inputs/test")
     println(part1(input))
     println(part2(input))
 }
